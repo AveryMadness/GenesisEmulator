@@ -21,7 +21,7 @@ public class Program
         Console.WriteLine("ROM End Address: " + rom.ROMEnd);
         Console.WriteLine("RAM Start Address: " + rom.RAMStart);
         Console.WriteLine("RAM End Address: " + rom.RAMEnd);
-        Console.WriteLine("Compatible Regions: " + rom.Regions);
+        Console.WriteLine("Compatible Regions: " + GetAllRegionNames(rom.Regions));
     }
 
     public static string BytesToHexString(byte[] bytes)
