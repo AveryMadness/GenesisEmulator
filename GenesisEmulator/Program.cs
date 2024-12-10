@@ -32,7 +32,7 @@ public class Program
         //Z80 memory
         memoryManager.AddMemoryRegion(0xA00000, 0xA0FFFF, new Ram(0x10000));
         //I/O registers
-        memoryManager.AddMemoryRegion(0xA10000, 0xA1001F, new IoHandler(controller.ReadPort, controller.WritePort));
+        memoryManager.AddMemoryRegion(0xA10000, 0xA1001F, new IoHandler(controller));
         //VDP registers, placeholder size
         memoryManager.AddMemoryRegion(0xC00000, 0xC0001F, new Ram(0x20));
         //Work RAM

@@ -87,11 +87,11 @@ public class StatusRegister
 
 public class Cpu68000
 {
-    private List<int> DataRegisters = new(8);
-    private List<int> AddressRegisters = new(8);
+    private List<int> DataRegisters;
+    private List<int> AddressRegisters;
 
     private uint ProgramCounter = 0;
-    private StatusRegister StatusRegister;
+    private StatusRegister StatusRegister = new();
 
     private MemoryManager memory;
 
@@ -104,12 +104,42 @@ public class Cpu68000
         ProgramCounter = EntryPoint;
     }
 
+    private ushort DecodeOpcode(byte[] opcode)
+    {
+        byte first = opcode[0];
+
+        switch (first)
+        {
+            case 0x66:
+                return first;
+            case 0x60:
+                return first;
+        }
+        
+        byte second = opcode[1];
+
+        ushort longOpcode = (ushort)((first << 8) | second);
+
+        switch (longOpcode)
+        {
+            case 0x4AB9:
+                return second;
+            
+            case 0x4A79:
+                return second;
+        }
+
+        return 0x00;
+    }
+
     public void StartExecution()
     {
         while (true)
         {
             Console.WriteLine("Program Position: " + ProgramCounter);
-            byte OpCode = memory.ReadByte((uint)ProgramCounter++);
+            byte OpCode = ReadByte(ProgramCounter);
+            byte OpCode2 = ReadByte(ProgramCounter);
+            ProgramCounter--;
 
             if (!ExecuteOpcode(OpCode))
             {
@@ -119,18 +149,19 @@ public class Cpu68000
         }
     }
 
-    private bool ExecuteOpcode(byte OpCode)
+    private bool ExecuteOpcode(ushort OpCode)
     {
         switch (OpCode)
         {
+            //TST
             case 0x4A:
             {
-                byte AddressingMode = memory.ReadByte((uint)ProgramCounter++);
+                byte AddressingMode = ReadByte(ProgramCounter);
 
                 if (AddressingMode == 0xB9)
                 {
                     //Long Addressing Mode
-                    uint Address = memory.ReadUInt32((uint)ProgramCounter++);
+                    uint Address = ReadInt32(ProgramCounter);
                     int Value = (int)memory.ReadUInt32(Address);
 
                     if (Value == 0)
@@ -149,12 +180,12 @@ public class Cpu68000
                         StatusRegister.Zero = false;
                     }
                 }
-                else if (AddressingMode == 0xA9)
+                else if (AddressingMode == 0x79)
                 {
                     //Short Addressing Mode
-                    ushort Address = memory.ReadUInt16(ProgramCounter++);
+                    ushort Address = ReadInt16(ProgramCounter);
                     
-                    short Value = (short)memory.ReadUInt16((uint)Address);
+                    short Value = (short)memory.ReadUInt16(Address);
 
                     if (Value == 0)
                     {
@@ -175,7 +206,7 @@ public class Cpu68000
                 else if (AddressingMode == 0xA0)
                 {
                     //Absolute Addressing Mode
-                    byte AbsoluteAddress = memory.ReadByte((uint)ProgramCounter++);
+                    byte AbsoluteAddress = ReadByte(ProgramCounter);
                     
                     sbyte Value = (sbyte)memory.ReadByte(AbsoluteAddress);
 
@@ -203,6 +234,26 @@ public class Cpu68000
                 
                 break;
             }
+            //BNE
+            case 0x66:
+            {
+                sbyte Displacement = (sbyte)ReadByte(ProgramCounter);
+
+                if (StatusRegister.Zero)
+                {
+                    ProgramCounter += (uint)Displacement;
+                }
+
+                return true;
+            }
+            case 0x60:
+            {
+                sbyte Displacement = (sbyte)ReadByte(ProgramCounter);
+                
+                ProgramCounter += (uint)Displacement;
+
+                return true;
+            }
             
             default:
                 Console.WriteLine("Unhandled OpCode 0x" + OpCode.ToString("X"));
@@ -211,15 +262,23 @@ public class Cpu68000
 
         return true;
     }
-    
-    private Int16 ReadInt16(uint Address)
+
+    private byte ReadByte(uint Address)
     {
-        return (short)((memory.ReadByte(Address) << 8) | memory.ReadByte(Address + 1));
+        ProgramCounter++;
+        return memory.ReadByte(Address);
     }
     
-    private int ReadInt32(uint Address)
+    private ushort ReadInt16(uint Address)
     {
-        return (ReadInt16(Address) << 16) | (ReadInt16(Address + 2) & 0xFFFF);
+        ProgramCounter+=2;
+        return memory.ReadUInt16(Address);
+    }
+    
+    private uint ReadInt32(uint Address)
+    {
+        ProgramCounter += 4;
+        return memory.ReadUInt32(Address);
     }
 
     private int GetStackPointer()

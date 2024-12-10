@@ -11,6 +11,7 @@ public class RomHandler : IMemoryHandler
 
     public byte ReadByte(uint address)
     {
+        Console.WriteLine($"Cpu reading byte from rom at 0x{address:X8}");
         if (address < rom.Length)
             return rom[address];
         return 0xFF; // Open bus
@@ -18,6 +19,7 @@ public class RomHandler : IMemoryHandler
 
     public UInt16 ReadUInt16(uint address)
     {
+        Console.WriteLine($"Cpu reading ushort from rom at 0x{address:X8}");
         if (address < rom.Length)
         {
             byte highByte = rom[address];
@@ -30,6 +32,8 @@ public class RomHandler : IMemoryHandler
 
     public UInt32 ReadUInt32(uint address)
     {
+        Console.WriteLine($"Cpu reading uint from rom at 0x{address:X8}");
+
         if (address < rom.Length)
         {
             byte byte11 = rom[address];
