@@ -24,7 +24,21 @@ public class Program
         Console.WriteLine("Compatible Regions: " + GetAllRegionNames(rom.Regions));
         Console.WriteLine("Entry Point: " + rom.EntryPoint);
 
-        Cpu68000 CPU = new Cpu68000(rom.Code, rom.InitialStackPointerValue, rom.EntryPoint - 0x200);
+        Controller controller = new Controller();
+
+        MemoryManager memoryManager = new MemoryManager();
+        //rom memory
+        memoryManager.AddMemoryRegion(0x000000, 0x3FFFFF, new RomHandler(rom.Code));
+        //Z80 memory
+        memoryManager.AddMemoryRegion(0xA00000, 0xA0FFFF, new Ram(0x10000));
+        //I/O registers
+        memoryManager.AddMemoryRegion(0xA10000, 0xA1001F, new IoHandler(controller.ReadPort, controller.WritePort));
+        //VDP registers, placeholder size
+        memoryManager.AddMemoryRegion(0xC00000, 0xC0001F, new Ram(0x20));
+        //Work RAM
+        memoryManager.AddMemoryRegion(0xFF0000, 0xFFFFFF, new Ram(0x10000));
+
+        Cpu68000 CPU = new Cpu68000(memoryManager, rom.InitialStackPointerValue, (uint)rom.EntryPoint - 0x200);
         CPU.StartExecution();
     }
 

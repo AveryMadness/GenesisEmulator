@@ -16,8 +16,28 @@ public class IoHandler : IMemoryHandler
         return readCallback(address);
     }
 
+    public ushort ReadUInt16(uint address)
+    {
+        return 0x0000;
+    }
+
+    public uint ReadUInt32(uint address)
+    {
+        return 0x000000;
+    }
+
     public void WriteByte(uint address, byte value)
     {
         writeCallback(address, value);
+    }
+
+    public void WriteUInt16(uint address, ushort value)
+    {
+        //
+    }
+
+    public void WriteUInt32(uint address, uint value)
+    {
+        //
     }
 }

@@ -90,12 +90,12 @@ public class Cpu68000
     private List<int> DataRegisters = new(8);
     private List<int> AddressRegisters = new(8);
 
-    private int ProgramCounter = -1;
+    private uint ProgramCounter = 0;
     private StatusRegister StatusRegister;
 
     private MemoryManager memory;
 
-    public Cpu68000(MemoryManager memory, int InitialStackPointerValue, int EntryPoint)
+    public Cpu68000(MemoryManager memory, int InitialStackPointerValue, uint EntryPoint)
     {
         DataRegisters = new() { 0, 0, 0, 0, 0, 0, 0, 0 };
         AddressRegisters = new() { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -125,13 +125,13 @@ public class Cpu68000
         {
             case 0x4A:
             {
-                byte AddressingMode = ReadByte();
+                byte AddressingMode = memory.ReadByte((uint)ProgramCounter++);
 
                 if (AddressingMode == 0xB9)
                 {
                     //Long Addressing Mode
-                    int Address = ReadInt32();
-                    int Value = ReadInt32(Address);
+                    uint Address = memory.ReadUInt32((uint)ProgramCounter++);
+                    int Value = (int)memory.ReadUInt32(Address);
 
                     if (Value == 0)
                     {
@@ -152,9 +152,9 @@ public class Cpu68000
                 else if (AddressingMode == 0xA9)
                 {
                     //Short Addressing Mode
-                    Int16 Address = memory.ReadInt16();
+                    ushort Address = memory.ReadUInt16(ProgramCounter++);
                     
-                    Int16 Value = ReadInt16(Address);
+                    short Value = (short)memory.ReadUInt16((uint)Address);
 
                     if (Value == 0)
                     {
@@ -177,7 +177,7 @@ public class Cpu68000
                     //Absolute Addressing Mode
                     byte AbsoluteAddress = memory.ReadByte((uint)ProgramCounter++);
                     
-                    byte Value = memory.ReadByte(AbsoluteAddress);
+                    sbyte Value = (sbyte)memory.ReadByte(AbsoluteAddress);
 
                     if (Value == 0)
                     {
