@@ -22,6 +22,10 @@ public class Program
         Console.WriteLine("RAM Start Address: " + rom.RAMStart);
         Console.WriteLine("RAM End Address: " + rom.RAMEnd);
         Console.WriteLine("Compatible Regions: " + GetAllRegionNames(rom.Regions));
+        Console.WriteLine("Entry Point: " + rom.EntryPoint);
+
+        Cpu68000 CPU = new Cpu68000(rom.Code, rom.InitialStackPointerValue, rom.EntryPoint - 0x200);
+        CPU.StartExecution();
     }
 
     public static string BytesToHexString(byte[] bytes)

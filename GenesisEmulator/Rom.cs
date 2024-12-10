@@ -13,6 +13,9 @@ public enum Region
 
 public class Rom
 {
+    public Int32 InitialStackPointerValue = 0;
+    public Int32 EntryPoint = 0;
+    
     public string HardwareDesignation = string.Empty;
     public string Copyright = string.Empty;
     public string DomesticGameTitle = string.Empty;
@@ -37,11 +40,21 @@ public class Rom
     
     public Region Regions = Region.Invalid;
 
+    public byte[] Code = Array.Empty<byte>();
+
     public static Rom ReadFromStream(Stream stream)
     {
         var rom = new Rom();
         
-        //100 bytes of garbage at the beginning? perhaps a signature
+        byte[] InitialStackBuffer = new byte[0x4];
+        stream.Read(InitialStackBuffer, 0, InitialStackBuffer.Length);
+        rom.InitialStackPointerValue = BitConverter.ToInt32(InitialStackBuffer.Reverse().ToArray());
+        
+        byte[] EntryPointBuffer = new byte[0x4];
+        stream.Read(EntryPointBuffer, 0, EntryPointBuffer.Length);
+        rom.EntryPoint = BitConverter.ToInt32(EntryPointBuffer.Reverse().ToArray());
+        
+        //100 bytes of garbage at the beginning? perhaps a signature // its not lol
         stream.Seek(0x100, SeekOrigin.Begin);
         
         byte[] HardwareDesignationBuffer = new byte[16];
@@ -95,6 +108,11 @@ public class Rom
         string regionStr = ReadPaddedString(RegionsBuffer);
 
         rom.Regions = ReadRegion(regionStr);
+        
+        stream.Seek(0x200, SeekOrigin.Begin);
+        byte[] CodeBuffer = new byte[(rom.ROMEnd + 1) - 0x200];
+        stream.Read(CodeBuffer, 0, CodeBuffer.Length);
+        rom.Code = CodeBuffer;
         
         return rom;
     }
