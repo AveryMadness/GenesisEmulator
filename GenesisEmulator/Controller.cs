@@ -16,19 +16,19 @@ public class Controller
     private bool LeftPressed = false;
     private bool RightPressed = false;
     
-    public byte GetControllerBitmask(bool a, bool b, bool c, bool start, bool up, bool down, bool left, bool right)
+    public uint GetControllerBitmask(bool a, bool b, bool c, bool start, bool up, bool down, bool left, bool right)
     {
-        byte bitmask = 0xFF; // Start with all buttons unpressed (0xFF means all bits set to 1)
+        uint bitmask = 0xFFFFFFFF; // Start with all buttons unpressed (0xFF means all bits set to 1)
     
         // Set the bits according to button presses
-        if (a) bitmask &= 0xFE; // A button
-        if (b) bitmask &= 0xFD; // B button
-        if (c) bitmask &= 0xFB; // C button
-        if (start) bitmask &= 0xF7; // Start button
-        if (up) bitmask &= 0xEF; // Up button
-        if (down) bitmask &= 0xDF; // Down button
-        if (left) bitmask &= 0xBF; // Left button
-        if (right) bitmask &= 0x7F; // Right button
+        if (a) bitmask &= 0xFFFFFFFE; // A button
+        if (b) bitmask &= 0xFFFFFFFD; // B button
+        if (c) bitmask &= 0xFFFFFFFB; // C button
+        if (start) bitmask &= 0xFFFFFFF7; // Start button
+        if (up) bitmask &= 0xFFFFFFEF; // Up button
+        if (down) bitmask &= 0xFFFFFFDF; // Down button
+        if (left) bitmask &= 0xFFFFFFBF; // Left button
+        if (right) bitmask &= 0xFFFFFF7F; // Right button
     
         return bitmask;
     }
@@ -56,8 +56,6 @@ public class Controller
 
         return address switch
         {
-            0xA10008 => GetControllerBitmask(AButtonPressed, BButtonPressed, CButtonPressed, StartPressed,
-                UpPressed, DownPressed, LeftPressed, RightPressed),
             _ => 0xFFFF
         };
     }
@@ -68,7 +66,9 @@ public class Controller
 
         return address switch
         {
-            _ => 0xFFFFFF
+            0xA10008 => GetControllerBitmask(AButtonPressed, BButtonPressed, CButtonPressed, StartPressed,
+                UpPressed, DownPressed, LeftPressed, RightPressed),
+            _ => 0xFFFFFFFF
         };
     }
 

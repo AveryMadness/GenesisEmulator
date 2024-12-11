@@ -104,49 +104,18 @@ public class Cpu68000
         ProgramCounter = EntryPoint;
     }
 
-    private ushort DecodeOpcode(byte[] opcode)
-    {
-        byte first = opcode[0];
-
-        switch (first)
-        {
-            case 0x66:
-                return first;
-            case 0x60:
-                return first;
-        }
-        
-        byte second = opcode[1];
-
-        ushort longOpcode = (ushort)((first << 8) | second);
-
-        switch (longOpcode)
-        {
-            case 0x4AB9:
-                return second;
-            
-            case 0x4A79:
-                return second;
-        }
-
-        return 0x00;
-    }
-
     public void StartExecution()
     {
-        while (true)
-        {
-            Console.WriteLine("Program Position: " + ProgramCounter);
-            byte OpCode = ReadByte(ProgramCounter);
-            byte OpCode2 = ReadByte(ProgramCounter);
-            ProgramCounter--;
+        Console.WriteLine("Program Position: " + ProgramCounter);
+        byte OpCode = ReadByte(ProgramCounter);
 
-            if (!ExecuteOpcode(OpCode))
-            {
-                Console.WriteLine("Failed to Execute OpCode 0x" + OpCode.ToString("X"));
-                return;
-            }
+        if (!ExecuteOpcode(OpCode))
+        {
+            Console.WriteLine("Failed to Execute OpCode 0x" + OpCode.ToString("X") + " or OpCode requested program stop.");
+            return;
         }
+        
+        StartExecution();
     }
 
     private bool ExecuteOpcode(ushort OpCode)
@@ -182,33 +151,10 @@ public class Cpu68000
                 }
                 else if (AddressingMode == 0x79)
                 {
-                    //Short Addressing Mode
-                    ushort Address = ReadInt16(ProgramCounter);
+                    //read 16 bit from 32 bit address
                     
+                    uint Address = ReadInt32(ProgramCounter);
                     short Value = (short)memory.ReadUInt16(Address);
-
-                    if (Value == 0)
-                    {
-                        StatusRegister.Zero = true;
-                        StatusRegister.Negative = false;
-                    }
-                    else if (Value < 0)
-                    {
-                        StatusRegister.Negative = true;
-                        StatusRegister.Zero = false;
-                    }
-                    else
-                    {
-                        StatusRegister.Negative = false;
-                        StatusRegister.Zero = false;
-                    }
-                }
-                else if (AddressingMode == 0xA0)
-                {
-                    //Absolute Addressing Mode
-                    byte AbsoluteAddress = ReadByte(ProgramCounter);
-                    
-                    sbyte Value = (sbyte)memory.ReadByte(AbsoluteAddress);
 
                     if (Value == 0)
                     {

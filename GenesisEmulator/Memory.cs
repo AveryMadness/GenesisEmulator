@@ -33,17 +33,23 @@ public class MemoryManager
 
     public byte ReadByte(uint address)
     {
-        return GetHandler(address).ReadByte(address);
+        byte read = GetHandler(address).ReadByte(address);
+        Console.WriteLine($"Read byte 0x{read:x8} at address 0x{address:X8}");
+        return read;
     }
 
     public UInt16 ReadUInt16(uint address)
     {
-        return GetHandler(address).ReadUInt16(address);
+        UInt16 read = GetHandler(address).ReadUInt16(address);
+        Console.WriteLine($"Read byte 0x{read:x8} at address 0x{address:X8}");
+        return read;
     }
 
     public UInt32 ReadUInt32(uint address)
     {
-        return GetHandler(address).ReadUInt32(address);
+        UInt32 read = GetHandler(address).ReadUInt32(address);
+        Console.WriteLine($"Read byte 0x{read:x8} at address 0x{address:X8}");
+        return read;
     }
 
     public void WriteByte(uint address, byte value)
