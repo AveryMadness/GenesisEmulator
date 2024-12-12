@@ -1,6 +1,4 @@
-﻿using System.Net.Mail;
-
-namespace GenesisEmulator
+﻿namespace GenesisEmulator
 {
     public enum Direction
     {
@@ -14,6 +12,22 @@ namespace GenesisEmulator
         Byte,
         Word,
         Long
+    }
+    
+    public static class SizeExtensions
+    {
+        public static string GetString(this Size me)
+        {
+            switch (me)
+            {
+                case Size.Byte:
+                    return "b";
+                case Size.Word:
+                    return "w";
+                case Size.Long:
+                    return "l";
+            }
+        }
     }
 
     public enum Sign
@@ -116,6 +130,70 @@ namespace GenesisEmulator
             : Target;
 
         public record IndirectMemory(uint Address, Size Size) : Target;
+
+        public static class TargetExtensions
+        {
+            public static string GetString(this Target target)
+            {
+                if (target is Immediate)
+                {
+                    Immediate immediate = target as Immediate;
+
+                    return $"0x{immediate.Value:X8}";
+                }
+                
+                if (target is DirectDReg)
+                {
+                    DirectDReg immediate = target as DirectDReg;
+
+                    return $"%d{immediate.Register}";
+                }
+                
+                if (target is DirectAReg)
+                {
+                    DirectAReg immediate = target as DirectAReg;
+
+                    return $"%a{immediate.Register}";
+                }
+                
+                if (target is IndirectAReg)
+                {
+                    IndirectAReg immediate = target as IndirectAReg;
+
+                    return $"(%a{immediate.Register})";
+                }
+                
+                if (target is IndirectARegInc)
+                {
+                    IndirectARegInc immediate = target as IndirectARegInc;
+
+                    return $"(%a{immediate.Register})+";
+                }
+                
+                if (target is IndirectARegDec)
+                {
+                    IndirectARegDec immediate = target as IndirectARegDec;
+
+                    return $"-(%a{immediate.Register})";
+                }
+
+                if (target is IndirectRegOffset)
+                {
+                    IndirectRegOffset immediate = target as IndirectRegOffset;
+
+                    string indexStr = StringHelpers.FormatIndexDisp(immediate.Index);
+                    return $"(0x{immediate.Offset:X4}, {immediate.Base}{indexStr})";
+                }
+
+                if (target is IndirectMemoryPreindexed)
+                {
+                    IndirectMemoryPreindexed immediate = target as IndirectMemoryPreindexed;
+                    
+                    string indexStr = StringHelpers.FormatIndexDisp(immediate.Index);
+                    return $"([{immediate.Base}0x{immediate.}])";
+                }
+            }
+        }
     }
 
     public class Instruction
@@ -123,6 +201,11 @@ namespace GenesisEmulator
         public virtual bool Execute()
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return "Default Instruction";
         }
     }
 
@@ -134,6 +217,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"orib\t0x{Data:X2}, %ccr";
+        }
     }
 
     public class ANDtoCCR(byte data) : Instruction
@@ -143,6 +231,11 @@ namespace GenesisEmulator
         public override bool Execute()
         {
             return false;
+        }
+        
+        public override string ToString()
+        {
+            return $"andib\t0x{Data:X2}, %ccr";
         }
     }
 
@@ -154,6 +247,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+        
+        public override string ToString()
+        {
+            return $"eorib\t0x{Data:X2}, %ccr";
+        }
     }
 
     public class ORtoSR(ushort data) : Instruction
@@ -163,6 +261,11 @@ namespace GenesisEmulator
         public override bool Execute()
         {
             return false;
+        }
+        
+        public override string ToString()
+        {
+            return $"oriw\t0x{Data:X4}, %sr";
         }
     }
 
@@ -174,6 +277,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+        
+        public override string ToString()
+        {
+            return $"andiw\t0x{Data:X4}, %sr";
+        }
     }
 
     public class EORtoSR(ushort data) : Instruction
@@ -183,6 +291,11 @@ namespace GenesisEmulator
         public override bool Execute()
         {
             return false;
+        }
+        
+        public override string ToString()
+        {
+            return $"eoriw\t0x{Data:X4}, %sr";
         }
     }
 
@@ -198,7 +311,191 @@ namespace GenesisEmulator
         {
             return false;
         }
+        
+        public override string ToString()
+        {
+            switch (direction)
+            {
+                case Direction.ToTarget:
+                {
+                    return $"movel\t%usp, {}";
+                }
+            }
+        }
+    }
+
+    public class BTST(Target.Target bitnum, Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
     }
     
+    public class BCHG(Target.Target bitnum, Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
     
+    public class BCLR(Target.Target bitnum, Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class BSET(Target.Target bitnum, Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class OR(Target.Target bitnum, Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class AND(Target.Target bitnum, Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class SUB(Target.Target bitnum, Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    public class ADD(Target.Target bitnum, Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class EOR(Target.Target bitnum, Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()  
+        {
+            return false;
+        }
+    }
+    
+    public class CMP(Target.Target bitnum, Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class MOVE(Target.Target bitnum, Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class MOVEA(Target.Target bitnum, byte register, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private byte Register = register;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class CHK(Target.Target bitnum, byte register, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private byte Register = register;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+
+    public class StringHelpers
+    {
+        public static string FormatIndexDisp(IndexRegister? index)
+        {
+            if (index is null)
+            {
+                return "";
+            }
+            
+            string result = $", %{index.Value.XReg}";
+
+            if (index.Value.Scale != 0)
+            {
+                result += $"<< {index.Value.Scale}";
+            }
+
+            return result;
+        }
+    }
 }

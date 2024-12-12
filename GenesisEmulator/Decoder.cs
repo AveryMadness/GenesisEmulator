@@ -109,7 +109,96 @@ public class Decoder(MemoryManager memoryManager, uint Start)
 
                     switch ((ins & 0x00C0) >> 6)
                     {
-                        case 0b00: return 
+                        case 0b00: return new BTST(bitnum, target, size);
+                        case 0b01: return new BCHG(bitnum, target, size);
+                        case 0b10: return new BCLR(bitnum, target, size);
+                        case 0b11: return new BSET(bitnum, target, size);
+                    }
+                }
+                else
+                {
+                    Size size = GetSize(ins);
+                    uint data = 0;
+                    switch (size)
+                    {
+                        case Size.Byte: data = (uint)ReadUInt16() & 0xFF;
+                            break;
+                        case Size.Word: data = (uint)ReadUInt16();
+                            break;
+                        case Size.Long: data = ReadUInt32();
+                            break;
+                        default: throw new Exception();
+                    }
+
+                    Target.Target target = DecodeLowerEffectiveAddress(ins, size);
+
+                    switch (optype)
+                    {
+                        case 0b0000: return new OR(new Immediate(data), target, size);
+                        case 0b0010: return new AND(new Immediate(data), target, size);
+                        case 0b0100: return new SUB(new Immediate(data), target, size);
+                        case 0b0110: return new ADD(new Immediate(data), target, size);
+                        case 0b1010: return new EOR(new Immediate(data), target, size);
+                        case 0b1100: return new CMP(new Immediate(data), target, size);
+                    }
+                }
+
+                break;
+            }
+
+            case OPCG_MOVE_BYTE:
+            {
+                Target.Target src = DecodeLowerEffectiveAddress(ins, Size.Byte);
+                Target.Target dest = DecodeUpperEffectiveAddress(ins, Size.Byte);
+                return new MOVE(src, dest, Size.Byte);
+            }
+
+            case OPCG_MOVE_LONG:
+            {
+                Target.Target src = DecodeLowerEffectiveAddress(ins, Size.Long);
+                Target.Target dest = DecodeUpperEffectiveAddress(ins, Size.Long);
+
+                if (dest is DirectAReg)
+                {
+                    DirectAReg reg = (DirectAReg)dest;
+                    return new MOVEA(src, reg, Size.Long);
+                }
+
+                return new MOVE(src, dest, Size.Long);
+            }
+
+            case OPCG_MOVE_WORD:
+            {
+                Target.Target src = DecodeLowerEffectiveAddress(ins, Size.Word);
+                Target.Target dest = DecodeUpperEffectiveAddress(ins, Size.Word);
+
+                if (dest is DirectAReg)
+                {
+                    DirectAReg reg = (DirectAReg)dest;
+                    return new MOVEA(src, reg, Size.Word);
+                }
+
+                return new MOVE(src, dest, Size.Word);
+            }
+            
+            case OPCG_MISC:
+            {
+                ushort ins_0f00 = (ushort)(ins & 0x0F00);
+                ushort ins_00f0 = (ushort)(ins & 0x00F0);
+
+                if ((ins & 0x180) == 0x180)
+                {
+                    if ((ins & 0x040) == 0)
+                    {
+                        Size size = GetSize(ins);
+
+                        if (size is Size.Long)
+                            size = Size.Word;
+
+                        byte reg = GetHighReg(ins);
+
+                        Target.Target target = DecodeLowerEffectiveAddress(ins, size);
+                        return new CHK
                     }
                 }
             }
@@ -273,6 +362,42 @@ public class Decoder(MemoryManager memoryManager, uint Start)
             case Size.Byte: return (int)(sbyte)(byte)value;
             case Size.Word: return (int)(Int16)(UInt16)value;
             case Size.Long: return (int)value;
+            default: return 0;
+        }
+    }
+
+    public Size GetSize(ushort ins)
+    {
+        switch ((ins & 0x00C0) >> 6)
+        {
+            case 0b00: return Size.Byte;
+            case 0b01: return Size.Word;
+            case 0b10: return Size.Long;
+            default: throw new Exception();
+        }
+    }
+
+    public Condition GetCondition(ushort ins)
+    {
+        switch ((ins & 0x0F00) >> 8)
+        {
+            case 0b0000: return Condition.True;
+            case 0b0001: return Condition.False;
+            case 0b0010: return Condition.High;
+            case 0b0011: return Condition.LowOrSame;
+            case 0b0100: return Condition.CarryClear;
+            case 0b0101: return Condition.CarrySet;
+            case 0b0110: return Condition.NotEqual;
+            case 0b0111: return Condition.Equal;
+            case 0b1000: return Condition.OverflowClear;
+            case 0b1001: return Condition.OverflowSet;
+            case 0b1010: return Condition.Plus;
+            case 0b1011: return Condition.Minus;
+            case 0b1100: return Condition.GreaterThanOrEqual;
+            case 0b1101: return Condition.LessThan;
+            case 0b1110: return Condition.GreaterThan;
+            case 0b1111: return Condition.LessThanOrEqual;
+            default: return Condition.True;
         }
     }
 }
