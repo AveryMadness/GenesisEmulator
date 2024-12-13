@@ -27,6 +27,8 @@
                 case Size.Long:
                     return "l";
             }
+
+            return "";
         }
     }
 
@@ -190,8 +192,10 @@
                     IndirectMemoryPreindexed immediate = target as IndirectMemoryPreindexed;
                     
                     string indexStr = StringHelpers.FormatIndexDisp(immediate.Index);
-                    return $"([{immediate.Base}0x{immediate.}])";
+                    return $"([{immediate.Base}{indexStr}0x{immediate.Offset:X8}] + 0x{immediate.Displacement:X8})";
                 }
+
+                return "";
             }
         }
     }
@@ -318,9 +322,15 @@
             {
                 case Direction.ToTarget:
                 {
-                    return $"movel\t%usp, {}";
+                    return $"movep{SizeExtensions.GetString(size)}\t%d{dreg}, ({areg}, %a{offset})";
+                }
+                case Direction.FromTarget:
+                {
+                    return $"movep{SizeExtensions.GetString(size)}\t({areg}, %a{offset}), %d{dreg}";
                 }
             }
+
+            return "";
         }
     }
 
@@ -472,6 +482,177 @@
         private Target.Target Bitnum = bitnum;
         private byte Register = register;
         private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+
+    public class LEA(Target.Target target, byte register) : Instruction
+    {
+        private Target.Target Target = target;
+        private byte Register = register;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+
+    public class MOVEM(Target.Target target, Size size, Direction direction, ushort data) : Instruction
+    {
+        private Target.Target Target = target;
+        private Size Size = size;
+        private Direction Direction = direction;
+        private ushort Data = data;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+
+    public class NEGX(Target.Target target, Size size) : Instruction
+    {
+        public Target.Target Target = target;
+        public Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+
+    public class MOVEfromSR(Target.Target target) : Instruction
+    {
+        private Target.Target Target = target;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+
+    public class CLR(Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class NEG(Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class MOVEtoCCR(Target.Target target) : Instruction
+    {
+        private Target.Target Target = target;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class MOVEtoSR(Target.Target target) : Instruction
+    {
+        private Target.Target Target = target;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+
+    public class NOT(Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class NCBD(Target.Target target) : Instruction
+    {
+        private Target.Target Target = target;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class SWAP(byte reg) : Instruction
+    {
+        private byte Reg = reg;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class BKPT(byte reg) : Instruction
+    {
+        private byte Reg = reg;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class PEA(Target.Target target) : Instruction
+    {
+        private Target.Target Target = target;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class TST(Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class TAS(Target.Target target) : Instruction
+    {
+        private Target.Target Target = target;
+
+        public override bool Execute()
+        {
+            return false;
+        }
+    }
+    
+    public class EXT(byte reg, Size size1, Size size2) : Instruction
+    {
+        private byte Reg = reg;
+        private Size Size1 = size1;
+        private Size Size2 = size2;
 
         public override bool Execute()
         {

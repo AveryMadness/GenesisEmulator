@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Reflection;
+using System.Security.Cryptography;
 using GenesisEmulator.BaseRegister;
 using GenesisEmulator.Target;
 
@@ -29,7 +30,7 @@ public class Decoder(MemoryManager memoryManager, uint Start)
     private const byte OPCG_FLINE = 0xF;
 
     
-    public Instruction Decode()
+    public Instruction? Decode()
     {
         ushort ins = ReadUInt16();
         _instructionWord = ins;
@@ -161,7 +162,7 @@ public class Decoder(MemoryManager memoryManager, uint Start)
                 if (dest is DirectAReg)
                 {
                     DirectAReg reg = (DirectAReg)dest;
-                    return new MOVEA(src, reg, Size.Long);
+                    return new MOVEA(src, reg.Register, Size.Long);
                 }
 
                 return new MOVE(src, dest, Size.Long);
@@ -175,7 +176,7 @@ public class Decoder(MemoryManager memoryManager, uint Start)
                 if (dest is DirectAReg)
                 {
                     DirectAReg reg = (DirectAReg)dest;
-                    return new MOVEA(src, reg, Size.Word);
+                    return new MOVEA(src, reg.Register, Size.Word);
                 }
 
                 return new MOVE(src, dest, Size.Word);
@@ -198,11 +199,153 @@ public class Decoder(MemoryManager memoryManager, uint Start)
                         byte reg = GetHighReg(ins);
 
                         Target.Target target = DecodeLowerEffectiveAddress(ins, size);
-                        return new CHK
+                        return new CHK(target, reg, size);
+                    }
+                    else
+                    {
+                        Target.Target src = DecodeLowerEffectiveAddress(ins, null);
+                        byte dest = GetHighReg(ins);
+                        return new LEA(src, dest);
                     }
                 }
+                else if ((ins & 0xB80) == 0x880 && (ins & 0x038) != 0)
+                {
+                    Size size = (ins & 0x0040) == 0 ? Size.Word : Size.Long;
+                    ushort data = ReadUInt16();
+                    Target.Target target = DecodeLowerEffectiveAddress(ins, null);
+                    Direction dir = (ins & 0x0400) == 0 ? Direction.ToTarget : Direction.FromTarget;
+                    return new MOVEM(target, size, dir, data);
+                }
+                else if ((ins & 0x800) == 0)
+                {
+                    Target.Target target = DecodeLowerEffectiveAddress(ins, Size.Word);
+                    Size size = GetSize(ins);
+
+                    switch ((ins & 0x0700) >> 8)
+                    {
+                        
+                        case 0b000:
+                        {
+                            switch (size)
+                            {
+                                case Size.None:
+                                    return new MOVEfromSR(target);
+                                default:
+                                    return new NEGX(target, size);
+                            }
+                        }
+                        case 0b010:
+                        {
+                            switch (size)
+                            {
+                                case Size.None:
+                                    throw new Exception();
+                                default:
+                                    return new CLR(target, size);
+                            }
+                        }
+                        case 0b100:
+                        {
+                            switch (size)
+                            {
+                                case Size.None:
+                                    return new NEG(target, size);
+                                default:
+                                    return new MOVEtoCCR(target);
+                            }
+                        }
+                        case 0b110:
+                        {
+                            switch (size)
+                            {
+                                case Size.None:
+                                    return new MOVEtoSR(target);
+                                default:
+                                    return new NOT(target, size);
+                            }
+                        }
+
+                        default:
+                        {
+                            throw new Exception();
+                        }
+                    }
+                }
+                else if (ins_0f00 == 0x800 || ins_0f00 == 0x900)
+                {
+                    byte opcode = (byte)((ins & 0x01C0) >> 6);
+                    byte mode = GetLowMode(ins);
+
+                    switch ((opcode, mode))
+                    {
+                        case (0b000, _):
+                        {
+                            Target.Target target = DecodeLowerEffectiveAddress(ins, Size.Byte);
+                            return new NCBD(target);
+                        }
+
+                        case (0b001, 0b000):
+                        {
+                            return new SWAP(GetLowReg(ins));
+                        }
+
+                        case (0b001, 0b001):
+                        {
+                            return new BKPT(GetLowReg(ins));
+                        }
+
+                        case (0b001, _):
+                        {
+                            Target.Target target = DecodeLowerEffectiveAddress(ins, null);
+                            return new PEA(target);
+                        }
+
+                        case (0b010, 0b000):
+                        {
+                            return new EXT(GetLowReg(ins), Size.Byte, Size.Word);
+                        }
+
+                        case (0b011, 0b000):
+                        {
+                            return new EXT(GetLowReg(ins), Size.Word, Size.Long);
+                        }
+
+                        case (0b111, 0b000):
+                        {
+                            return new EXT(GetLowReg(ins), Size.Byte, Size.Long);
+                        }
+                        
+                        default:
+                            throw new Exception();
+                    }
+                }
+                else if (ins_0f00 == 0xA00)
+                {
+                    if ((ins & 0x0FF) == 0xFC)
+                    {
+                        throw new Exception();
+                    }
+                    else
+                    {
+                        Target.Target target = DecodeLowerEffectiveAddress(ins, Size.Word);
+
+                        Size size = GetSize(ins);
+
+                        switch (size)
+                        {
+                            case Size.None:
+                                return new TAS(target);
+                            default:
+                                return new TST(target, size);
+                        }
+                    }
+                }
+
+                break;
             }
         }
+
+        return null;
     }
     
     
@@ -373,7 +516,7 @@ public class Decoder(MemoryManager memoryManager, uint Start)
             case 0b00: return Size.Byte;
             case 0b01: return Size.Word;
             case 0b10: return Size.Long;
-            default: throw new Exception();
+            default: return Size.None;
         }
     }
 

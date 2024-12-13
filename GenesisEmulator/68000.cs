@@ -107,13 +107,15 @@ public class Cpu68000
     public void StartExecution()
     {
         Console.WriteLine("Program Position: " + ProgramCounter);
-        byte OpCode = ReadByte(ProgramCounter);
 
-        if (!ExecuteOpcode(OpCode))
+        Decoder decoder = new Decoder(memory, ProgramCounter);
+        Instruction? instruction = decoder.Decode();
+
+        /*if (!ExecuteOpcode(OpCode))
         {
             Console.WriteLine("Failed to Execute OpCode 0x" + OpCode.ToString("X") + " or OpCode requested program stop.");
             return;
-        }
+        }*/
         
         StartExecution();
     }
