@@ -6,10 +6,20 @@ using GenesisEmulator.Target;
 
 namespace GenesisEmulator;
 
-public class Decoder(MemoryManager memoryManager, uint Start)
+public class RefWrapper<T>
+{
+    public T Value { get; set; }
+
+    public RefWrapper(T value)
+    {
+        Value = value;
+    }
+}
+
+public class Decoder(MemoryManager memoryManager, RefWrapper<uint> Start)
 {
     private MemoryManager _memory = memoryManager;
-    private uint _start = Start;
+    private RefWrapper<uint> _start = Start;
     private ushort _instructionWord = 0;
 
     private const byte OPCG_BIT_OPS = 0x0;
@@ -351,15 +361,15 @@ public class Decoder(MemoryManager memoryManager, uint Start)
     
     public ushort ReadUInt16()
     {
-        ushort value = _memory.ReadUInt16(_start);
-        _start += 2;
+        ushort value = _memory.ReadUInt16(_start.Value);
+        _start.Value += 2;
         return value;
     }
 
     public uint ReadUInt32()
     {
-        uint value = _memory.ReadUInt32(_start);
-        _start += 4;
+        uint value = _memory.ReadUInt32(_start.Value);
+        _start.Value += 4;
         return value;
     }
 
@@ -387,7 +397,7 @@ public class Decoder(MemoryManager memoryManager, uint Start)
     {
         byte reg = GetLowReg(ins);
         byte mode = GetLowMode(ins);
-        return GetModeAsTarget(mode, reg, size.Value);
+        return GetModeAsTarget(mode, reg, size);
     }
 
     public Target.Target DecodeUpperEffectiveAddress(ushort ins, Size? size)
@@ -397,7 +407,7 @@ public class Decoder(MemoryManager memoryManager, uint Start)
         return GetModeAsTarget(mode, reg, size.Value);
     }
 
-    public Target.Target GetModeAsTarget(byte mode, byte reg, Size size)
+    public Target.Target GetModeAsTarget(byte mode, byte reg, Size? size)
     {
         switch (mode)
         {

@@ -107,9 +107,12 @@ public class Cpu68000
     public void StartExecution()
     {
         Console.WriteLine("Program Position: " + ProgramCounter);
+        
+        RefWrapper<uint> RefWrapper = new(ProgramCounter);
 
-        Decoder decoder = new Decoder(memory, ProgramCounter);
+        Decoder decoder = new Decoder(memory, RefWrapper);
         Instruction? instruction = decoder.Decode();
+        ProgramCounter = RefWrapper.Value;
 
         /*if (!ExecuteOpcode(OpCode))
         {

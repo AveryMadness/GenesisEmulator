@@ -1,4 +1,6 @@
-﻿namespace GenesisEmulator
+﻿using GenesisEmulator.Target;
+
+namespace GenesisEmulator
 {
     public enum Direction
     {
@@ -193,6 +195,11 @@
                     
                     string indexStr = StringHelpers.FormatIndexDisp(immediate.Index);
                     return $"([{immediate.Base}{indexStr}0x{immediate.Offset:X8}] + 0x{immediate.Displacement:X8})";
+                }
+
+                if (target is IndirectMemory)
+                {
+                    
                 }
 
                 return "";
@@ -498,6 +505,11 @@
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"lea\t{TargetExtensions.GetString(target)}, %a{register}";
+        }
     }
 
     public class MOVEM(Target.Target target, Size size, Direction direction, ushort data) : Instruction
@@ -635,6 +647,11 @@
         public override bool Execute()
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"tst.{size.GetString()}\t{target.GetString()}";
         }
     }
     
