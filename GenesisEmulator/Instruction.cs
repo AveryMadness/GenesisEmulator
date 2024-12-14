@@ -1,4 +1,5 @@
-﻿using GenesisEmulator.Target;
+﻿using System.Security.Cryptography;
+using GenesisEmulator.Target;
 
 namespace GenesisEmulator
 {
@@ -40,6 +41,12 @@ namespace GenesisEmulator
         Unsigned
     }
 
+    public enum ShiftDirection
+    {
+        Right,
+        Left
+    }
+
     namespace XRegister
     {
         public abstract record XRegister;
@@ -58,6 +65,25 @@ namespace GenesisEmulator
         public record PC : BaseRegister;
 
         public record AReg(byte Reg) : BaseRegister;
+    }
+
+    public static class BaseRegisterExtensions
+    {
+        public static string GetString(this BaseRegister.BaseRegister me)
+        {
+            if (me is BaseRegister.PC)
+            {
+                return "pc";
+            }
+
+            if (me is BaseRegister.AReg)
+            {
+                BaseRegister.AReg AReg = (BaseRegister.AReg)me;
+                return $"a{AReg.Reg}";
+            }
+
+            return "";
+        }
     }
 
     public struct IndexRegister(XRegister.XRegister reg, byte scale, Size size)
@@ -150,35 +176,35 @@ namespace GenesisEmulator
                 {
                     DirectDReg immediate = target as DirectDReg;
 
-                    return $"%d{immediate.Register}";
+                    return $"d{immediate.Register}";
                 }
                 
                 if (target is DirectAReg)
                 {
                     DirectAReg immediate = target as DirectAReg;
 
-                    return $"%a{immediate.Register}";
+                    return $"a{immediate.Register}";
                 }
                 
                 if (target is IndirectAReg)
                 {
                     IndirectAReg immediate = target as IndirectAReg;
 
-                    return $"(%a{immediate.Register})";
+                    return $"(a{immediate.Register})";
                 }
                 
                 if (target is IndirectARegInc)
                 {
                     IndirectARegInc immediate = target as IndirectARegInc;
 
-                    return $"(%a{immediate.Register})+";
+                    return $"(a{immediate.Register})+";
                 }
                 
                 if (target is IndirectARegDec)
                 {
                     IndirectARegDec immediate = target as IndirectARegDec;
 
-                    return $"-(%a{immediate.Register})";
+                    return $"-(a{immediate.Register})";
                 }
 
                 if (target is IndirectRegOffset)
@@ -186,7 +212,7 @@ namespace GenesisEmulator
                     IndirectRegOffset immediate = target as IndirectRegOffset;
 
                     string indexStr = StringHelpers.FormatIndexDisp(immediate.Index);
-                    return $"(0x{immediate.Offset:X4}, {immediate.Base}{indexStr})";
+                    return $"(0x{immediate.Offset:X4}, {immediate.Base.GetString()}{indexStr})";
                 }
 
                 if (target is IndirectMemoryPreindexed)
@@ -194,12 +220,21 @@ namespace GenesisEmulator
                     IndirectMemoryPreindexed immediate = target as IndirectMemoryPreindexed;
                     
                     string indexStr = StringHelpers.FormatIndexDisp(immediate.Index);
-                    return $"([{immediate.Base}{indexStr}0x{immediate.Offset:X8}] + 0x{immediate.Displacement:X8})";
+                    return $"([{immediate.Base.GetString()}{indexStr}0x{immediate.Offset:X8}] + 0x{immediate.Displacement:X8})";
                 }
 
                 if (target is IndirectMemory)
                 {
-                    
+                    IndirectMemory immediate = target as IndirectMemory;
+
+                    if (immediate.Size == Size.Word)
+                    {
+                        return $"(0x{immediate.Address:X4})";
+                    }
+                    else
+                    {
+                        return $"(0x{immediate.Address:X8})";
+                    }
                 }
 
                 return "";
@@ -209,7 +244,7 @@ namespace GenesisEmulator
 
     public class Instruction
     {
-        public virtual bool Execute()
+        public virtual bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -224,14 +259,14 @@ namespace GenesisEmulator
     {
         private byte Data = data;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
 
         public override string ToString()
         {
-            return $"orib\t0x{Data:X2}, %ccr";
+            return $"orib\t0x{Data:X2}, ccr";
         }
     }
 
@@ -239,14 +274,14 @@ namespace GenesisEmulator
     {
         private byte Data = data;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
         
         public override string ToString()
         {
-            return $"andib\t0x{Data:X2}, %ccr";
+            return $"andib\t0x{Data:X2}, ccr";
         }
     }
 
@@ -254,14 +289,14 @@ namespace GenesisEmulator
     {
         private byte Data = data;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
         
         public override string ToString()
         {
-            return $"eorib\t0x{Data:X2}, %ccr";
+            return $"eorib\t0x{Data:X2}, ccr";
         }
     }
 
@@ -269,14 +304,14 @@ namespace GenesisEmulator
     {
         private ushort Data = data;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
         
         public override string ToString()
         {
-            return $"oriw\t0x{Data:X4}, %sr";
+            return $"oriw\t0x{Data:X4}, sr";
         }
     }
 
@@ -284,14 +319,14 @@ namespace GenesisEmulator
     {
         private ushort Data = data;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
         
         public override string ToString()
         {
-            return $"andiw\t0x{Data:X4}, %sr";
+            return $"andiw\t0x{Data:X4}, sr";
         }
     }
 
@@ -299,14 +334,14 @@ namespace GenesisEmulator
     {
         private ushort Data = data;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
         
         public override string ToString()
         {
-            return $"eoriw\t0x{Data:X4}, %sr";
+            return $"eoriw\t0x{Data:X4}, sr";
         }
     }
 
@@ -318,7 +353,7 @@ namespace GenesisEmulator
         private Size size = size;
         private Direction direction = direction;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -329,11 +364,11 @@ namespace GenesisEmulator
             {
                 case Direction.ToTarget:
                 {
-                    return $"movep{SizeExtensions.GetString(size)}\t%d{dreg}, ({areg}, %a{offset})";
+                    return $"movep.{size.GetString()}\td{dreg}, ({areg}, a{offset})";
                 }
                 case Direction.FromTarget:
                 {
-                    return $"movep{SizeExtensions.GetString(size)}\t({areg}, %a{offset}), %d{dreg}";
+                    return $"movep.{size.GetString()}\t({areg}, a{offset}), d{dreg}";
                 }
             }
 
@@ -347,9 +382,14 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"btst.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
         }
     }
     
@@ -359,9 +399,14 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"bchg.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
         }
     }
     
@@ -371,9 +416,14 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+        
+        public override string ToString()
+        {
+            return $"bclr.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
         }
     }
     
@@ -383,9 +433,14 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+        
+        public override string ToString()
+        {
+            return $"bset.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
         }
     }
     
@@ -395,9 +450,21 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            if (Bitnum is Immediate)
+            {
+                return $"ori.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
+            }
+            else
+            {
+                return $"or.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
+            }
         }
     }
     
@@ -407,7 +474,19 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class SUBX(Target.Target bitnum, Target.Target target, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private Target.Target Target = target;
+        private Size Size = size;
+
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -419,7 +498,7 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -430,7 +509,7 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -442,7 +521,7 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()  
+        public override bool Execute(Cpu68000 CPU)  
         {
             return false;
         }
@@ -454,7 +533,19 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class CMPA(Target.Target bitnum, byte reg, Size size) : Instruction
+    {
+        private Target.Target Bitnum = bitnum;
+        private byte Reg = reg;
+        private Size Size = size;
+
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -466,7 +557,7 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -478,7 +569,7 @@ namespace GenesisEmulator
         private byte Register = register;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -490,7 +581,7 @@ namespace GenesisEmulator
         private byte Register = register;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -501,14 +592,14 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private byte Register = register;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
 
         public override string ToString()
         {
-            return $"lea\t{TargetExtensions.GetString(target)}, %a{register}";
+            return $"lea\t{TargetExtensions.GetString(Target)}, a{Register}";
         }
     }
 
@@ -519,9 +610,21 @@ namespace GenesisEmulator
         private Direction Direction = direction;
         private ushort Data = data;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            if (Direction == Direction.ToTarget)
+            {
+                return $"movem.{Size.GetString()}\t{StringHelpers.FormatMOVEMMask(Data, Target)}, {Target.GetString()}";
+            }
+            else
+            {
+                return $"movem.{Size.GetString()}\t{Target.GetString()}, {StringHelpers.FormatMOVEMMask(Data, Target)}";
+            }
         }
     }
 
@@ -530,7 +633,7 @@ namespace GenesisEmulator
         public Target.Target Target = target;
         public Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -540,7 +643,7 @@ namespace GenesisEmulator
     {
         private Target.Target Target = target;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -551,7 +654,7 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -562,7 +665,7 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -572,7 +675,7 @@ namespace GenesisEmulator
     {
         private Target.Target Target = target;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -582,7 +685,7 @@ namespace GenesisEmulator
     {
         private Target.Target Target = target;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -593,7 +696,7 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -603,7 +706,41 @@ namespace GenesisEmulator
     {
         private Target.Target Target = target;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class ACBD(Target.Target target, Target.Target target2) : Instruction
+    {
+        private Target.Target Target = target;
+        private Target.Target Target2 = target2;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            
+        }
+    }
+    
+    public class EXG(Target.Target target, Target.Target target2) : Instruction
+    {
+        private Target.Target Target = target;
+        private Target.Target Target2 = target2;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class MULW(Target.Target target, byte reg, Sign sign) : Instruction
+    {
+        private Target.Target Target = target;
+        private byte Reg = reg;
+        private Sign Sign = sign;
+
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -613,7 +750,7 @@ namespace GenesisEmulator
     {
         private byte Reg = reg;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -623,7 +760,7 @@ namespace GenesisEmulator
     {
         private byte Reg = reg;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -633,7 +770,7 @@ namespace GenesisEmulator
     {
         private Target.Target Target = target;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -644,7 +781,7 @@ namespace GenesisEmulator
         private Target.Target Target = target;
         private Size Size = size;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -659,7 +796,7 @@ namespace GenesisEmulator
     {
         private Target.Target Target = target;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -671,7 +808,316 @@ namespace GenesisEmulator
         private Size Size1 = size1;
         private Size Size2 = size2;
 
-        public override bool Execute()
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class JSR(Target.Target target) : Instruction
+    {
+        private Target.Target Target = target;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class JMP(Target.Target target) : Instruction
+    {
+        private Target.Target Target = target;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+
+    public class TRAP(byte num) : Instruction
+    {
+        private byte Num = num;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+
+    public class LINK(byte reg, Int32 offset) : Instruction
+    {
+        private byte Reg = reg;
+        private Int32 Offset = offset;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+
+    public class ULNK(byte reg) : Instruction
+    {
+        private byte Reg = reg;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+
+    public class MOVEUSP(Target.Target target, Direction direction) : Instruction
+    {
+        private Target.Target Target = target;
+        private Direction Direction = direction;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+
+    public class RESET() : Instruction
+    {
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class NOP() : Instruction
+    {
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+
+    public class STOP(ushort data) : Instruction
+    {
+        private ushort Data = data;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class RTE() : Instruction
+    {
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class RTS() : Instruction
+    {
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class TRAPV() : Instruction
+    {
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class RTR() : Instruction
+    {
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class MOVEC(Target.Target target, ControlRegister creg, Direction dir) : Instruction
+    {
+        private Target.Target Target = target;
+        private ControlRegister ControlRegister = creg;
+        private Direction Direction = dir;
+        
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+
+    public class ADDA(Target.Target target, byte reg, Size size) : Instruction
+    {
+        private Target.Target Target = target;
+        private byte Reg = reg;
+        private Size Size = size;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class ADDX(Target.Target srcTarget, Target.Target destTarget, Size size) : Instruction
+    {
+        private Target.Target SrcTarget = srcTarget;
+        private Target.Target DestTarget = destTarget;
+        private Size Size = size;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+
+    public class ASd(Target.Target count, Target.Target register, Size size, ShiftDirection dir) : Instruction
+    {
+        private Target.Target Count = count;
+        private Target.Target Register = register;
+        private Size Size = size;
+        private ShiftDirection ShiftDirection = dir;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class LSd(Target.Target count, Target.Target register, Size size, ShiftDirection dir) : Instruction
+    {
+        private Target.Target Count = count;
+        private Target.Target Register = register;
+        private Size Size = size;
+        private ShiftDirection ShiftDirection = dir;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class ROXd(Target.Target count, Target.Target register, Size size, ShiftDirection dir) : Instruction
+    {
+        private Target.Target Count = count;
+        private Target.Target Register = register;
+        private Size Size = size;
+        private ShiftDirection ShiftDirection = dir;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class ROd(Target.Target count, Target.Target register, Size size, ShiftDirection dir) : Instruction
+    {
+        private Target.Target Count = count;
+        private Target.Target Register = register;
+        private Size Size = size;
+        private ShiftDirection ShiftDirection = dir;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class SUBA(Target.Target target, byte reg, Size size) : Instruction
+    {
+        private Target.Target Target = target;
+        private byte Reg = reg;
+        private Size Size = size;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    //condition code?
+    public class DBcc(Condition condition, byte reg, short displacement) : Instruction
+    {
+        private Condition Condition = condition;
+        private byte Reg = reg;
+        private short Displacement = displacement;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class Scc(Condition condition, Target.Target target) : Instruction
+    {
+        private Condition Condition = condition;
+        private Target.Target Target = target;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class Bcc(Condition condition, int disp) : Instruction
+    {
+        private Condition Condition = condition;
+        private int Displacement = disp;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class BRA(int disp) : Instruction
+    {
+        private int Displacement = disp;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class BSR(int disp) : Instruction
+    {
+        private int Displacement = disp;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+    
+    public class MOVEQ(byte data, byte reg) : Instruction
+    {
+        private byte Data = data;
+        private byte Reg = reg;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+
+    public class DIVW(Target.Target target, byte reg, Sign sign) : Instruction
+    {
+        private Target.Target Target = target;
+        private byte Reg = reg;
+        private Sign Sign = sign;
+
+        public override bool Execute(Cpu68000 CPU)
+        {
+            return false;
+        }
+    }
+
+    public class SBCD(Target.Target targetx, Target.Target targety) : Instruction
+    {
+        private Target.Target TargetX = targetx;
+        private Target.Target TargetY = targety;
+
+        public override bool Execute(Cpu68000 CPU)
         {
             return false;
         }
@@ -686,7 +1132,7 @@ namespace GenesisEmulator
                 return "";
             }
             
-            string result = $", %{index.Value.XReg}";
+            string result = $", {index.Value.XReg}";
 
             if (index.Value.Scale != 0)
             {
@@ -694,6 +1140,58 @@ namespace GenesisEmulator
             }
 
             return result;
+        }
+
+        public static string FormatMOVEMMask(ushort mask, Target.Target target)
+        {
+            List<string> output = new();
+
+            if (target is IndirectARegDec)
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    if ((mask & 0x01) != 0)
+                    {
+                        output.Add($"a{i}");
+                    }
+
+                    mask >>= 1;
+                }
+
+                for (int i = 0; i < 8; i++)
+                {
+                    if ((mask & 0x01) != 0)
+                    {
+                        output.Add($"d{i}");
+                    }
+
+                    mask >>= 1;
+                }
+            }
+            else
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    if ((mask & 0x01) != 0)
+                    {
+                        output.Add($"d{i}");
+                    }
+
+                    mask >>= 1;
+                }
+                
+                for (int i = 0; i < 8; i++)
+                {
+                    if ((mask & 0x01) != 0)
+                    {
+                        output.Add($"a{i}");
+                    }
+
+                    mask >>= 1;
+                }
+            }
+
+            return string.Join('-', output);
         }
     }
 }

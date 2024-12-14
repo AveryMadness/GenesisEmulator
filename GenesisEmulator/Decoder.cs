@@ -1,8 +1,10 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Reflection;
 using System.Security.Cryptography;
 using GenesisEmulator.BaseRegister;
 using GenesisEmulator.Target;
+using Microsoft.Win32.SafeHandles;
 
 namespace GenesisEmulator;
 
@@ -350,11 +352,442 @@ public class Decoder(MemoryManager memoryManager, RefWrapper<uint> Start)
                         }
                     }
                 }
+                else if (ins_0f00 == 0xE00)
+                {
+                    if ((ins & 0x80) == 0x80)
+                    {
+                        Target.Target target = DecodeLowerEffectiveAddress(ins, null);
+                        if ((ins & 0b01000000) == 0)
+                        {
+                            return new JSR(target);
+                        }
+                        else
+                        {
+                            return new JMP(target);
+                        }
+                    }
+                    else if (ins_00f0 == 0x40)
+                    {
+                        return new TRAP((byte)(ins & 0x000F));
+                    }
+                    else if (ins_00f0 == 0x50)
+                    {
+                        byte reg = GetLowReg(ins);
+
+                        if ((ins & 0b1000) == 0)
+                        {
+                            int data = (int)(ReadUInt16());
+                            return new LINK(reg, data);
+                        }
+                        else
+                        {
+                            return new ULNK(reg);
+                        }
+                    }
+                    else if (ins_00f0 == 0x60)
+                    {
+                        byte reg = GetLowReg(ins);
+                        Direction direction = (ins & 0b1000) == 0 ? Direction.FromTarget : Direction.ToTarget;
+                        return new MOVEUSP(new DirectAReg(reg), direction);
+                    }
+                    else
+                    {
+                        switch (ins & 0x00FF)
+                        {
+                            case 0x70: return new RESET();
+                            case 0x71: return new NOP();
+                            case 0x72:
+                            {
+                                ushort data = ReadUInt16();
+                                return new STOP(data);
+                            }
+                            case 0x73: return new RTE();
+                            case 0x75: return new RTS();
+                            case 0x76: return new TRAPV();
+                            case 0x77: return new RTR();
+                            case 0x7A:
+                            {
+                                Direction direction = (ins & 0x01) == 0 ? Direction.ToTarget : Direction.FromTarget;
+                                ushort ins2 = ReadUInt16();
+                                Target.Target target = null;
+
+                                if ((ins2 & 0x8000) == 0)
+                                {
+                                    target = new DirectDReg((byte)((ins2 & 0x7000) >> 12));
+                                }
+                                else
+                                {
+                                    target = new DirectAReg((byte)((ins2 & 0x7000) >> 12));
+                                }
+
+                                ControlRegister cref = ControlRegister.VBR;
+                                if ((ins2 & 0xFFF) != 0x801)
+                                {
+                                    throw new Exception();
+                                }
+
+                                return new MOVEC(target, cref, direction);
+                            }
+                            default:
+                                throw new Exception();
+                        }
+                    }
+                }
 
                 break;
             }
-        }
+            case OPCG_ADDQ_SUBQ:
+            {
+                Size size = GetSize(ins);
 
+                if (size is not Size.None)
+                {
+                    Target.Target target = DecodeLowerEffectiveAddress(ins, size);
+                    uint data = (uint)((ins & 0x0E00) >> 9);
+
+                    if (data == 0)
+                        data = 8;
+
+                    if (target is DirectAReg)
+                    {
+                        DirectAReg reg = (DirectAReg)target;
+
+                        if ((ins & 0x0100) == 0)
+                        {
+                            return new ADDA(new Immediate(data), reg.Register, size);
+                        }
+                        else
+                        {
+                            return new SUBA(new Immediate(data), reg.Register, size);
+                        }
+                    }
+                    else
+                    {
+                        if ((ins & 0x0100) == 0)
+                        {
+                            return new ADD(new Immediate(data), target, size);
+                        }
+                        else
+                        {
+                            return new SUB(new Immediate(data), target, size);
+                        }
+                    }
+                }
+                else
+                {
+                    byte mode = GetLowMode(ins);
+                    Condition condition = GetCondition(ins);
+
+                    if (mode == 0b001)
+                    {
+                        byte reg = GetLowReg(ins);
+                        short disp = (short)ReadUInt16();
+                        return new DBcc(condition, reg, disp);
+                    }
+                    else
+                    {
+                        Target.Target target = DecodeLowerEffectiveAddress(ins, Size.Byte);
+                        return new Scc(condition, target);
+                    }
+                }
+            }
+
+            case OPCG_BRANCH:
+            {
+                int disp = (int)(ins & 0xFF);
+                if (disp == 0)
+                {
+                    disp = (int)ReadUInt16();
+                }
+
+                Condition condition = GetCondition(ins);
+
+                switch (condition)
+                {
+                    case Condition.True:
+                        return new BRA(disp);
+                    case Condition.False:
+                        return new BSR(disp);
+                    default:
+                        return new Bcc(condition, disp);
+                }
+            }
+            case OPCG_MOVEQ:
+            {
+                if ((ins & 0x0100) != 0)
+                {
+                    throw new Exception();
+                }
+
+                byte reg = GetHighReg(ins);
+                byte data = (byte)(ins & 0xFF);
+                return new MOVEQ(data, reg);
+            }
+            case OPCG_DIV_OR:
+            {
+                Size size = GetSize(ins);
+                
+                if (size == Size.None)
+                {
+                    Sign sign = (ins & 0x0100) == 0 ? Sign.Unsigned : Sign.Signed;
+                    Target.Target effective_addr = DecodeLowerEffectiveAddress(ins, Size.Word);
+                    return new DIVW(effective_addr, GetHighReg(ins), sign);
+                }
+                else if ((ins & 0x1F0) == 0x100)
+                {
+                    byte regx = GetHighReg(ins);
+                    byte regy = GetLowReg(ins);
+
+                    if ((ins & 0x08) != 0)
+                    {
+                        return new SBCD(new IndirectARegDec(regy), new IndirectARegDec(regx));
+                    }
+                    else
+                    {
+                        return new SBCD(new DirectDReg(regy), new DirectDReg(regx));
+                    }
+                }
+                else
+                {
+                    var data_reg = new DirectDReg(GetHighReg(ins));
+                    Target.Target effective_addr = DecodeLowerEffectiveAddress(ins, size);
+                    Target.Target from;
+                    Target.Target to;
+                    if ((ins & 0x0100) == 0)
+                    {
+                        from = effective_addr;
+                        to = data_reg;
+                    }
+                    else
+                    {
+                        from = data_reg;
+                        to = effective_addr;
+                    }
+
+                    return new OR(from, to, size);
+                }
+            }
+            case OPCG_SUB:
+            {
+                byte reg = GetHighReg(ins);
+                ushort dir = (ushort)((ins & 0x0100) >> 8);
+                Size size = GetSize(ins);
+
+                if (size != Size.None)
+                {
+                    if ((ins & 0b100110000) == 0b100000000)
+                    {
+                        byte src = GetLowReg(ins);
+                        byte dest = GetHighReg(ins);
+
+                        if ((ins & 0x08) == 0)
+                        {
+                            return new SUBX(new DirectDReg(src), new DirectDReg(dest), size);
+                        }
+                        else
+                        {
+                            return new SUBX(new IndirectARegDec(src), new IndirectARegDec(dest), size);
+                        }
+                    }
+                    else
+                    {
+                        Target.Target target = DecodeLowerEffectiveAddress(ins, size);
+                        if (dir == 0)
+                        {
+                            return new SUB(target, new DirectDReg(reg), size);
+                        }
+                        else
+                        {
+                            return new SUB(new DirectDReg(reg), target, size);
+                        }
+                    }
+                }
+                else
+                {
+                    size = dir == 0 ? Size.Word : Size.Long;
+                    Target.Target target = DecodeLowerEffectiveAddress(ins, size);
+                    return new SUBA(target, reg, size);
+                }
+            }
+            case OPCG_CMP_EOR:
+            {
+                byte reg = GetHighReg(ins);
+                ushort optype = (ushort)((ins & 0x0100) >> 8);
+                Size size = GetSize(ins);
+
+                if (size != Size.None)
+                {
+                    if (optype == 0b1)
+                    {
+                        if (GetLowMode(ins) == 0b001)
+                        {
+                            return new CMP(new IndirectARegInc(GetLowReg(ins)), new IndirectARegInc(reg), size);
+                        }
+                        else
+                        {
+                            Target.Target target = DecodeLowerEffectiveAddress(ins, size);
+                            return new EOR(new DirectDReg(reg), target, size);
+                        }
+                    }
+                    else if (optype == 0b0)
+                    {
+                        Target.Target target = DecodeLowerEffectiveAddress(ins, size);
+                        return new CMP(target, new DirectDReg(reg), size);
+                    }
+                }
+                else
+                {
+                    size = optype == 0 ? Size.Word : Size.Long;
+                    Target.Target target = DecodeLowerEffectiveAddress(ins, size);
+                    return new CMPA(target, reg, size);
+                }
+
+                throw new Exception();
+            }
+            case OPCG_MUL_AND:
+            {
+                Size size = GetSize(ins);
+
+                if ((ins & 0b0001_1111_0000) == 0b0001_0000_0000)
+                {
+                    byte regx = GetHighReg(ins);
+                    byte regy = GetLowReg(ins);
+
+                    if ((ins & 0x08) != 0)
+                    {
+                        return new ACBD(new IndirectARegDec(regy), new IndirectARegDec(regx));
+                    }
+                    else
+                    {
+                        return new ACBD(new DirectDReg(regy), new DirectDReg(regx));
+                    }
+                }
+                else if ((ins & 0b0001_0011_0000) == 0b0001_0000_0000 && size != Size.None)
+                {
+                    byte regx = GetHighReg(ins);
+                    byte regy = GetLowReg(ins);
+
+                    switch ((ins & 0x00F8) >> 3)
+                    {
+                        case 0b01000: return new EXG(new DirectDReg(regx), new DirectDReg(regy));
+                        case 0b01001: return new EXG(new DirectAReg(regx), new DirectAReg(regy));
+                        case 0b10001: return new EXG(new DirectDReg(regx), new DirectAReg(regy));
+                        default: throw new Exception();
+                    }
+                }
+                else if (size == Size.None)
+                {
+                    Sign sign = ((ins & 0x0100) == 0) ? Sign.Unsigned : Sign.Signed;
+                    Target.Target effectiveAddr = DecodeLowerEffectiveAddress(ins, Size.Word);
+                    return new MULW(effectiveAddr, GetHighReg(ins), sign);
+                }
+                else
+                {
+                    var DataReg = new DirectDReg(GetHighReg(ins));
+                    Target.Target effectiveAddr = DecodeLowerEffectiveAddress(ins, size);
+                    Target.Target from;
+                    Target.Target to;
+
+                    if ((ins & 0x0100) == 0)
+                    {
+                        from = effectiveAddr;
+                        to = DataReg;
+                    }
+                    else
+                    {
+                        to = effectiveAddr;
+                        from = DataReg;
+                    }
+
+                    return new AND(from, to, size);
+                }
+            }
+            case OPCG_ADD:
+            {
+                byte reg = GetHighReg(ins);
+                ushort dir = (ushort)((ins & 0x0100) >> 8);
+                Size size = GetSize(ins);
+
+                if (size != Size.None)
+                {
+                    if ((ins & 0b100110000) == 0b100000000)
+                    {
+                        byte src = GetLowReg(ins);
+                        byte dest = GetHighReg(ins);
+
+                        if ((ins & 0x08) == 0)
+                        {
+                            return new ADDX(new DirectDReg(src), new DirectDReg(dest), size);
+                        }
+                        else
+                        {
+                            return new ADDX(new IndirectARegDec(src), new IndirectARegDec(dest), size);
+                        }
+                    }
+                    else
+                    {
+                        Target.Target target = DecodeLowerEffectiveAddress(ins, size);
+
+                        if (dir == 0)
+                        {
+                            return new ADD(target, new DirectDReg(reg), size);
+                        }
+                        else
+                        {
+                            return new ADD(new DirectDReg(reg), target, size);
+                        }
+                    }
+                }
+                else
+                {
+                    size = dir == 0 ? Size.Word : Size.Long;
+                    Target.Target target = DecodeLowerEffectiveAddress(ins, size);
+                    return new ADDA(target, reg, size);
+                }
+            }
+            case OPCG_SHIFT:
+            {
+                ShiftDirection dir = (ins & 0x0100) == 0 ? ShiftDirection.Right : ShiftDirection.Left;
+
+                Size size = GetSize(ins);
+
+                if (size != Size.None)
+                {
+                    byte reg = GetLowReg(ins);
+                    byte rotation = GetHighReg(ins);
+                    Target.Target count = (ins & 0x0020) == 0
+                        ? new Immediate(rotation != 0 ? (uint)rotation : 8)
+                        : new DirectDReg(rotation);
+
+                    switch ((ins & 0x0018) >> 3)
+                    {
+                        case 0b00: return new ASd(count, new DirectDReg(reg), size, dir);
+                        case 0b01: return new LSd(count, new DirectDReg(reg), size, dir);
+                        case 0b10: return new ROXd(count, new DirectDReg(reg), size, dir);
+                        case 0b11: return new ROd(count, new DirectDReg(reg), size, dir);
+                        default: throw new Exception();
+                    }
+                }
+                else
+                {
+                    if ((ins & 0x800) == 0)
+                    {
+                        Target.Target target = DecodeLowerEffectiveAddress(ins, Size.Word);
+                        var count = new Immediate(1);
+                        switch ((ins & 0x0600) >> 9)
+                        {
+                            case 0b00: return new ASd(count, target, Size.Word, dir);
+                            case 0b01: return new LSd(count, target, Size.Word, dir);
+                            case 0b10: return new ROXd(count, target, Size.Word, dir);
+                            case 0b11: return new ROd(count, target, Size.Word, dir);
+                            default: throw new Exception();
+                        }
+                    }
+                }
+
+                throw new Exception();
+            }
+        }
         return null;
     }
     

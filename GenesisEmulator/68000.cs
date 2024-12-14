@@ -112,6 +112,7 @@ public class Cpu68000
 
         Decoder decoder = new Decoder(memory, RefWrapper);
         Instruction? instruction = decoder.Decode();
+        Console.WriteLine($"Decoded Instruction: {instruction}");
         ProgramCounter = RefWrapper.Value;
 
         /*if (!ExecuteOpcode(OpCode))
