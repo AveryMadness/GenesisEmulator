@@ -40,11 +40,27 @@ namespace GenesisEmulator
         Signed,
         Unsigned
     }
+    
+    public static class SignExtensions
+    {
+        public static string GetString(this Sign me)
+        {
+            return me is Sign.Signed ? "s" : "u";
+        }
+    }
 
     public enum ShiftDirection
     {
         Right,
         Left
+    }
+
+    public static class ShiftDirectionExtensions
+    {
+        public static string GetString(this ShiftDirection me)
+        {
+            return me is ShiftDirection.Right ? "r" : "l";
+        }
     }
 
     namespace XRegister
@@ -125,6 +141,50 @@ namespace GenesisEmulator
         LessThan,
         GreaterThan,
         LessThanOrEqual
+    }
+
+    public static class ConditionExtensions
+    {
+        public static string GetString(this Condition me)
+        {
+            switch (me)
+            {
+                case Condition.True:
+                    return "t";
+                case Condition.False:
+                    return "f";
+                case Condition.High:
+                    return "hi";
+                case Condition.LowOrSame:
+                    return "ls";
+                case Condition.CarryClear:
+                    return "cc";
+                case Condition.CarrySet:
+                    return "cs";
+                case Condition.NotEqual:
+                    return "ne";
+                case Condition.Equal:
+                    return "eq";
+                case Condition.OverflowClear:
+                    return "oc";
+                case Condition.OverflowSet:
+                    return "os";
+                case Condition.Plus:
+                    return "p";
+                case Condition.Minus:
+                    return "m";
+                case Condition.GreaterThanOrEqual:
+                    return "ge";
+                case Condition.LessThan:
+                    return "lt";
+                case Condition.GreaterThan:
+                    return "gt";
+                case Condition.LessThanOrEqual:
+                    return "le";
+                default:
+                    return "";
+            }
+        }
     }
 
     namespace Target
@@ -281,7 +341,7 @@ namespace GenesisEmulator
         
         public override string ToString()
         {
-            return $"andib\t0x{Data:X2}, ccr";
+            return $"andi.b\t0x{Data:X2}, ccr";
         }
     }
 
@@ -326,7 +386,7 @@ namespace GenesisEmulator
         
         public override string ToString()
         {
-            return $"andiw\t0x{Data:X4}, sr";
+            return $"andi.w\t0x{Data:X4}, sr";
         }
     }
 
@@ -478,6 +538,18 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            if (Bitnum is Immediate)
+            {
+                return $"andi.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
+            }
+            else
+            {
+                return $"and.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
+            }
+        }
     }
     
     public class SUBX(Target.Target bitnum, Target.Target target, Size size) : Instruction
@@ -489,6 +561,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"subx.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
         }
     }
     
@@ -502,6 +579,18 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            if (Bitnum is Immediate)
+            {
+                return $"subi.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
+            }
+            else
+            {
+                return $"sub.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
+            }
+        }
     }
     public class ADD(Target.Target bitnum, Target.Target target, Size size) : Instruction
     {
@@ -512,6 +601,18 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            if (Bitnum is Immediate)
+            {
+                return $"addi.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
+            }
+            else
+            {
+                return $"add.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
+            }
         }
     }
     
@@ -525,6 +626,18 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            if (Bitnum is Immediate)
+            {
+                return $"eori.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
+            }
+            else
+            {
+                return $"eor.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
+            }
+        }
     }
     
     public class CMP(Target.Target bitnum, Target.Target target, Size size) : Instruction
@@ -536,6 +649,18 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            if (Bitnum is Immediate)
+            {
+                return $"cmpi.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
+            }
+            else
+            {
+                return $"cmp.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
+            }
         }
     }
     
@@ -549,6 +674,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"cmpa.{Size.GetString()}\t{Bitnum.GetString()}, {Bitnum.GetString()}, a{Reg}";
+        }
     }
     
     public class MOVE(Target.Target bitnum, Target.Target target, Size size) : Instruction
@@ -560,6 +690,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"move.{Size.GetString()}\t{Bitnum.GetString()}, {Target.GetString()}";
         }
     }
     
@@ -573,6 +708,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"movea.{Size.GetString()}\t{Bitnum.GetString()}, a{Register}";
+        }
     }
     
     public class CHK(Target.Target bitnum, byte register, Size size) : Instruction
@@ -584,6 +724,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"chk.{Size.GetString()}\t{Bitnum.GetString()}, d{Register}";
         }
     }
 
@@ -637,6 +782,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"ngex.{Size.GetString()}\t{Target.GetString()}";
+        }
     }
 
     public class MOVEfromSR(Target.Target target) : Instruction
@@ -646,6 +796,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"movew\t%sr, {Target.GetString()}";
         }
     }
 
@@ -658,6 +813,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"clr.{Size.GetString()}\t{Target.GetString()}";
+        }
     }
     
     public class NEG(Target.Target target, Size size) : Instruction
@@ -669,6 +829,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"neg.{Size.GetString()}\t{Target.GetString()}";
+        }
     }
     
     public class MOVEtoCCR(Target.Target target) : Instruction
@@ -678,6 +843,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"moveb\t{Target.GetString()}, %ccr";
         }
     }
     
@@ -689,6 +859,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"movew\t{Target.GetString()}, %sr";
+        }
     }
 
     public class NOT(Target.Target target, Size size) : Instruction
@@ -699,6 +874,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"not.{Size.GetString()}\t{Target.GetString()}";
         }
     }
     
@@ -712,14 +892,19 @@ namespace GenesisEmulator
         }
     }
     
-    public class ACBD(Target.Target target, Target.Target target2) : Instruction
+    public class ABCD(Target.Target target, Target.Target target2) : Instruction
     {
         private Target.Target Target = target;
         private Target.Target Target2 = target2;
 
         public override bool Execute(Cpu68000 CPU)
         {
-            
+            return false;
+        }
+
+        public override string ToString()
+        {
+            return $"abcd\t{Target.GetString()}, {Target2.GetString()}";
         }
     }
     
@@ -731,6 +916,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"exg\t{Target.GetString()}, {Target2.GetString()}";
         }
     }
     
@@ -744,6 +934,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"mul{Sign.GetString()}.w\t{Target.GetString()}, d{Reg}";
+        }
     }
     
     public class SWAP(byte reg) : Instruction
@@ -753,6 +948,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"swap\td{Reg}";
         }
     }
     
@@ -764,6 +964,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"bkpt\t{Reg}";
+        }
     }
     
     public class PEA(Target.Target target) : Instruction
@@ -773,6 +978,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"pea\t{Target.GetString()}";
         }
     }
     
@@ -800,6 +1010,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"tas\t{Target.GetString()}";
+        }
     }
     
     public class EXT(byte reg, Size size1, Size size2) : Instruction
@@ -812,6 +1027,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"ext{(Size1 == Size.Byte && Size2 == Size.Long ? "b" : "")}.{Size2.GetString()}, d{reg}";
+        }
     }
     
     public class JSR(Target.Target target) : Instruction
@@ -821,6 +1041,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"jsr\t{Target.GetString()}";
         }
     }
     
@@ -832,6 +1057,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"jmp\t{Target.GetString()}";
+        }
     }
 
     public class TRAP(byte num) : Instruction
@@ -841,6 +1071,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"trap\t{Num}";
         }
     }
 
@@ -853,6 +1088,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"link\ta{Reg}, {Offset:X6}";
+        }
     }
 
     public class ULNK(byte reg) : Instruction
@@ -862,6 +1102,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"ulnk\ta{Reg}";
         }
     }
 
@@ -874,6 +1119,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"movel\t{(Direction == Direction.ToTarget ? "%usp" : Target.GetString())}, {(Direction == Direction.ToTarget ? Target.GetString() : "%usp")}";
+        }
     }
 
     public class RESET() : Instruction
@@ -882,6 +1132,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return "reset";
+        }
     }
     
     public class NOP() : Instruction
@@ -889,6 +1144,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return "nop";
         }
     }
 
@@ -900,6 +1160,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"stop\t{Data:X4}";
+        }
     }
     
     public class RTE() : Instruction
@@ -907,6 +1172,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return "rte";
         }
     }
     
@@ -916,6 +1186,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return "rts";
+        }
     }
     
     public class TRAPV() : Instruction
@@ -924,6 +1199,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"trapv";
+        }
     }
     
     public class RTR() : Instruction
@@ -931,6 +1211,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return "rtr";
         }
     }
     
@@ -944,6 +1229,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"movec\t{(Direction == Direction.FromTarget ? Target.GetString() : "%vbr")}, {(Direction == Direction.FromTarget ? "%vbr": Target.GetString())}";
+        }
     }
 
     public class ADDA(Target.Target target, byte reg, Size size) : Instruction
@@ -956,6 +1246,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"adda.{Size.GetString()}\t{Target.GetString()}, a{Reg}";
+        }
     }
     
     public class ADDX(Target.Target srcTarget, Target.Target destTarget, Size size) : Instruction
@@ -967,6 +1262,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+        
+        public override string ToString()
+        {
+            return $"addx.{Size.GetString()}\t{SrcTarget.GetString()}, {DestTarget.GetString()}";
         }
     }
 
@@ -981,6 +1281,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+        
+        public override string ToString()
+        {
+            return $"as{ShiftDirection.GetString()}.{Size.GetString()}\t{Count.GetString()}, {Register.GetString()}";
+        }
     }
     
     public class LSd(Target.Target count, Target.Target register, Size size, ShiftDirection dir) : Instruction
@@ -993,6 +1298,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"ls{ShiftDirection.GetString()}.{Size.GetString()}\t{Count.GetString()}, {Register.GetString()}";
         }
     }
     
@@ -1007,6 +1317,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"rox{ShiftDirection.GetString()}.{Size.GetString()}\t{Count.GetString()}, {Register.GetString()}";
+        }
     }
     
     public class ROd(Target.Target count, Target.Target register, Size size, ShiftDirection dir) : Instruction
@@ -1020,6 +1335,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"ro{ShiftDirection.GetString()}.{Size.GetString()}\t{Count.GetString()}, {Register.GetString()}";
+        }
     }
     
     public class SUBA(Target.Target target, byte reg, Size size) : Instruction
@@ -1031,6 +1351,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"suba.{Size.GetString()}\t{Target.GetString()}, a{Reg}";
         }
     }
     
@@ -1045,6 +1370,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"db{Condition.GetString()}\td{Reg}, {Displacement:X}";
+        }   
     }
     
     public class Scc(Condition condition, Target.Target target) : Instruction
@@ -1055,6 +1385,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"s{Condition.GetString()}\t{Target.GetString()}";
         }
     }
     
@@ -1067,6 +1402,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+        
+        public override string ToString()
+        {
+            return $"b{Condition.GetString()}\t{Displacement:X6}";
+        }
     }
     
     public class BRA(int disp) : Instruction
@@ -1076,6 +1416,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+        
+        public override string ToString()
+        {
+            return $"bra\t{Displacement:X6}";
         }
     }
     
@@ -1087,6 +1432,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+        
+        public override string ToString()
+        {
+            return $"bra\t{Displacement:X6}";
+        }
     }
     
     public class MOVEQ(byte data, byte reg) : Instruction
@@ -1097,6 +1447,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"moveq\t{Data:X2}, d{Reg}";
         }
     }
 
@@ -1110,6 +1465,11 @@ namespace GenesisEmulator
         {
             return false;
         }
+
+        public override string ToString()
+        {
+            return $"div{Sign.GetString()}.w\t{Target.GetString()}, d{Reg}";
+        }
     }
 
     public class SBCD(Target.Target targetx, Target.Target targety) : Instruction
@@ -1120,6 +1480,11 @@ namespace GenesisEmulator
         public override bool Execute(Cpu68000 CPU)
         {
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"sbcd\t{TargetX.GetString()}, {TargetY.GetString()}";
         }
     }
 

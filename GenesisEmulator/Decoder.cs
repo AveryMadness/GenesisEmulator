@@ -655,11 +655,11 @@ public class Decoder(MemoryManager memoryManager, RefWrapper<uint> Start)
 
                     if ((ins & 0x08) != 0)
                     {
-                        return new ACBD(new IndirectARegDec(regy), new IndirectARegDec(regx));
+                        return new ABCD(new IndirectARegDec(regy), new IndirectARegDec(regx));
                     }
                     else
                     {
-                        return new ACBD(new DirectDReg(regy), new DirectDReg(regx));
+                        return new ABCD(new DirectDReg(regy), new DirectDReg(regx));
                     }
                 }
                 else if ((ins & 0b0001_0011_0000) == 0b0001_0000_0000 && size != Size.None)
