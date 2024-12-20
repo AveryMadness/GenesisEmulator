@@ -689,6 +689,15 @@ namespace GenesisEmulator
 
         public override bool Execute(Cpu68000 CPU)
         {
+            switch (Size)
+            {
+                case Size.Byte:
+                {
+                    //CPU.ReadByte()
+                    break;
+                }
+            }
+
             return false;
         }
 
@@ -857,6 +866,14 @@ namespace GenesisEmulator
 
         public override bool Execute(Cpu68000 CPU)
         {
+            if (Target is Immediate)
+            {
+                Immediate immediate = (Immediate)Target;
+                ushort Value = CPU.ReadInt16(immediate.Value);
+                CPU.StatusRegister.SR = Value;
+                return true;
+            }
+
             return false;
         }
 
@@ -993,6 +1010,42 @@ namespace GenesisEmulator
 
         public override bool Execute(Cpu68000 CPU)
         {
+            switch (Size)
+            {
+                case Size.Long:
+                {
+                    if (Target is IndirectMemory)
+                    {
+                        IndirectMemory IndirectMemory = (IndirectMemory)Target;
+                        uint Value = CPU.ReadInt32(IndirectMemory.Address);
+
+                        if (Value == 0)
+                        {
+                            CPU.StatusRegister.Zero = true;
+                            CPU.StatusRegister.Negative = false;
+                        }
+                        else if (Value < 0)
+                        {
+                            CPU.StatusRegister.Zero = false;
+                            CPU.StatusRegister.Negative = true;
+                        }
+                        else if (Value > 0)
+                        {
+                            CPU.StatusRegister.Zero = false;
+                            CPU.StatusRegister.Negative = false;
+                        }
+
+                        return true;
+                    }
+
+                    break;
+                }
+                case Size.Word:
+                {
+                    
+                }
+            }
+
             return false;
         }
 
@@ -1400,6 +1453,19 @@ namespace GenesisEmulator
 
         public override bool Execute(Cpu68000 CPU)
         {
+            switch (Condition)
+            {
+                case Condition.NotEqual:
+                {
+                    if (CPU.StatusRegister.Zero)
+                    {
+                        CPU.ProgramCounter += (uint)Displacement;
+                    }
+
+                    return true;
+                }
+            }
+
             return false;
         }
         

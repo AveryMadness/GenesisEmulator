@@ -2,7 +2,7 @@ namespace GenesisEmulator;
 
 public class StatusRegister
 {
-    private int SR; // 16-bit Status Register (stored as a 32-bit int in C#)
+    public int SR; // 16-bit Status Register (stored as a 32-bit int in C#)
 
     // Mask values for each flag
     private const int MASK_N = 0x80; // Negative Flag (bit 7)
@@ -87,13 +87,13 @@ public class StatusRegister
 
 public class Cpu68000
 {
-    private List<int> DataRegisters;
-    private List<int> AddressRegisters;
+    public List<int> DataRegisters;
+    public List<int> AddressRegisters;
 
-    private uint ProgramCounter = 0;
-    private StatusRegister StatusRegister = new();
+    public uint ProgramCounter = 0;
+    public StatusRegister StatusRegister = new();
 
-    private MemoryManager memory;
+    public MemoryManager memory;
 
     public Cpu68000(MemoryManager memory, int InitialStackPointerValue, uint EntryPoint)
     {
@@ -115,6 +115,8 @@ public class Cpu68000
         Console.WriteLine($"Decoded Instruction: {instruction}");
         ProgramCounter = RefWrapper.Value;
 
+        instruction.Execute(this);
+
         /*if (!ExecuteOpcode(OpCode))
         {
             Console.WriteLine("Failed to Execute OpCode 0x" + OpCode.ToString("X") + " or OpCode requested program stop.");
@@ -124,126 +126,47 @@ public class Cpu68000
         StartExecution();
     }
 
-    private bool ExecuteOpcode(ushort OpCode)
+    public byte ReadByte(uint Address)
     {
-        switch (OpCode)
-        {
-            //TST
-            case 0x4A:
-            {
-                byte AddressingMode = ReadByte(ProgramCounter);
-
-                if (AddressingMode == 0xB9)
-                {
-                    //Long Addressing Mode
-                    uint Address = ReadInt32(ProgramCounter);
-                    int Value = (int)memory.ReadUInt32(Address);
-
-                    if (Value == 0)
-                    {
-                        StatusRegister.Zero = true;
-                        StatusRegister.Negative = false;
-                    }
-                    else if (Value < 0)
-                    {
-                        StatusRegister.Negative = true;
-                        StatusRegister.Zero = false;
-                    }
-                    else
-                    {
-                        StatusRegister.Negative = false;
-                        StatusRegister.Zero = false;
-                    }
-                }
-                else if (AddressingMode == 0x79)
-                {
-                    //read 16 bit from 32 bit address
-                    
-                    uint Address = ReadInt32(ProgramCounter);
-                    short Value = (short)memory.ReadUInt16(Address);
-
-                    if (Value == 0)
-                    {
-                        StatusRegister.Zero = true;
-                        StatusRegister.Negative = false;
-                    }
-                    else if (Value < 0)
-                    {
-                        StatusRegister.Negative = true;
-                        StatusRegister.Zero = false;
-                    }
-                    else
-                    {
-                        StatusRegister.Negative = false;
-                        StatusRegister.Zero = false;
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Unhandled Addressing Mode 0x" + AddressingMode.ToString("X"));
-                    return false;
-                }
-                
-                break;
-            }
-            //BNE
-            case 0x66:
-            {
-                sbyte Displacement = (sbyte)ReadByte(ProgramCounter);
-
-                if (StatusRegister.Zero)
-                {
-                    ProgramCounter += (uint)Displacement;
-                }
-
-                return true;
-            }
-            case 0x60:
-            {
-                sbyte Displacement = (sbyte)ReadByte(ProgramCounter);
-                
-                ProgramCounter += (uint)Displacement;
-
-                return true;
-            }
-            
-            default:
-                Console.WriteLine("Unhandled OpCode 0x" + OpCode.ToString("X"));
-                return false;
-        }
-
-        return true;
-    }
-
-    private byte ReadByte(uint Address)
-    {
-        ProgramCounter++;
         return memory.ReadByte(Address);
     }
-    
-    private ushort ReadInt16(uint Address)
+
+    public void WriteByte(uint Address, byte Value)
     {
-        ProgramCounter+=2;
-        return memory.ReadUInt16(Address);
+        memory.WriteByte(Address, Value);
     }
     
-    private uint ReadInt32(uint Address)
+    public ushort ReadInt16(uint Address)
     {
-        ProgramCounter += 4;
+        return memory.ReadUInt16(Address);
+    }
+
+    public void WriteInt16(uint Address, ushort Value)
+    {
+        memory.WriteUInt16(Address, Value);
+    }
+    
+    public uint ReadInt32(uint Address)
+    {
         return memory.ReadUInt32(Address);
     }
 
-    private int GetStackPointer()
+    public void WriteInt32(uint Address, uint Value)
+    {
+        memory.WriteUInt32(Address, Value);
+    }
+
+    public int GetStackPointer()
     {
         return AddressRegisters[7];
     }
 
-    private int GetFramePointer()
+    public int GetFramePointer()
     {
         return AddressRegisters[6];
     }
 
-    private int GetAddressRegister(int Index)
+    public int GetAddressRegister(int Index)
     {
         if (Index > AddressRegisters.Count - 1 || Index < 0)
         {
@@ -253,7 +176,7 @@ public class Cpu68000
         return AddressRegisters[Index];
     }
     
-    private int GetDataRegister(int Index)
+    public int GetDataRegister(int Index)
     {
         if (Index > DataRegisters.Count - 1 || Index < 0)
         {
@@ -273,7 +196,7 @@ public class Cpu68000
         AddressRegisters[Index] = Value;
     }
     
-    private void SetDataRegister(int Index, int Value)
+    public void SetDataRegister(int Index, int Value)
     {
         if (Index > DataRegisters.Count - 1 || Index < 0)
         {
